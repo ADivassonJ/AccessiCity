@@ -19,11 +19,13 @@ overview of the urban landscape.
 AccesiCity calculates the shortest routes from each residential building to the nearest
 services. Additionally, the model considers the hourly availability of services, factoring in
 their varying operational hours throughout the day to ensure accurate accessibility analysis.
+
+## Optimization
 A Greedy Algorithm was developed to maximize service coverage by identifying areas with
 the lowest current accessibility and proposing the opening of additional services in buildings
 that would provide the greatest benefit to the largest population.
 
-## Optimization
+## Currently Applied to Climate Shelter Networks
 On relation to the current application, it further prioritizes climate shelters that can be
 established quickly and with minimal investment. This method ensures a progressive and
 cost-effective optimization of the service network.
