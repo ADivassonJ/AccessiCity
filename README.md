@@ -1,5 +1,5 @@
 ## Work In Progress
-The following model of evaluation and optimisation of access to services is framed under the doctoral thesis developed by Asier Divasson-J. at the University of Deusto (Spain), directed by Cruz E. Borges, J. Ignacio Garcia, and Ana M. Macarulla.
+The following model of evaluation and optimisation of access to services is framed under the doctoral thesis developed by Asier Divasson-J. at the University of Deusto (Spain), directed by Dr. Cruz E. Borges, Dr. J. Ignacio Garcia, and Dr. Ana M. Macarulla.
 
 # AccessiCity
 AccesiCity is an urban accessibility analysis model designed to evaluate proximity and
