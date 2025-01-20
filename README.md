@@ -1,5 +1,5 @@
 ## Work In Progress
-
+The following model of evaluation and optimisation of access to services is framed under the doctoral thesis developed by Asier Divasson-J. at the University of Deusto (Spain), directed by Cruz E. Borges, J. Ignacio Garcia, and Ana M. Macarulla.
 
 # AccessiCity
 AccesiCity is an urban accessibility analysis model designed to evaluate proximity and
@@ -27,3 +27,5 @@ that would provide the greatest benefit to the largest population.
 On relation to the current application, it further prioritizes climate shelters that can be
 established quickly and with minimal investment. This method ensures a progressive and
 cost-effective optimization of the service network.
+
+![Alt text](images/AccessiCity.jpg)
