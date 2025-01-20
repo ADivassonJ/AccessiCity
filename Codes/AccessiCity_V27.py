@@ -778,8 +778,8 @@ if __name__ == "__main__":
     buildings = listar_buildings_por_numero(distances_path)
 
     # Definir la primera y última fecha del año
-    start_date = datetime(year, 3, 25, 0, 0)
-    end_date = datetime(year, 3, 31, 23, 0)
+    start_date = datetime(year, 8, 12, 0, 0)
+    end_date = datetime(year, 8, 18, 23, 0)
     hour_list = [start_date + timedelta(hours=i) for i in range(int((end_date - start_date).total_seconds() / 3600) + 1)]
     
     shelters_hour(df_ref_int, hour_list, results_path)
