@@ -30,4 +30,4 @@ On relation to the current application, it further prioritizes climate shelters 
 established quickly and with minimal investment. This method ensures a progressive and
 cost-effective optimization of the service network.
 
-![Alt text](images/AccessiCity.jpg)
+![Alt text](pictures/AccessiCity.jpg)
