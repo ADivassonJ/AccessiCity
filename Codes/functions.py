@@ -268,23 +268,17 @@ def process_data(hour_list, buildings, distances_path, max_distance, results_pat
                     continue
                 
                 buildin_names = df_considered.loc[:, 'osmid']
-                subarea_names = df_considered.loc[:, 'territory']
                 list_buildings_considered.extend(buildin_names.tolist())
                 
                 for b, b_name in enumerate(buildin_names):                   
                     # Verificar si ya existe un registro con el mismo 'osmid' y 'time'
                     existing_row = actual_point_list[(actual_point_list['osmid'] == b_name) & (actual_point_list['time'] == current_time.strftime('%Y-%m-%d %H:%M:%S'))]
-                    try:
-                        subarea_name = subarea_names[b]
-                    except Exception:
-                        subarea_name= 'NaN'
                     
                     if existing_row.empty:
                         # Si no existe, agregar una nueva fila
                         actual_point_list = pd.concat([
                             actual_point_list,
-                            pd.DataFrame({'osmid': [b_name], 
-                                        'subarea': [subarea_name], 
+                            pd.DataFrame({'osmid': [b_name],
                                         'type': shelter_type[1:-4], 
                                         'time': [current_time.strftime('%Y-%m-%d %H:%M:%S')], 
                                         'points': [1], 
