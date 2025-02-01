@@ -103,15 +103,15 @@ def building_type(row, poss_ref):
     # Si no se encuentra ninguna coincidencia
     return 'unknown'
 
-def obtener_geometrias(osmid_list):
-    data = get_osm_elements(osmid_list[0], osmid_list[1])
+def obtener_geometrias(city_name, pos_ref):
+    data = get_osm_elements(city_name, pos_ref)
     return data
 
-def obtener_dataframe_direcciones(data): 
+def obtener_dataframe_direcciones(city, pos_ref): 
     """Obtiene un DataFrame con las coordenadas de cada dirección y asigna un 'Territorio' (distrito)."""
     print('Procesando datos...')
 
-    refug_data = obtener_geometrias(data)
+    refug_data = obtener_geometrias(city, pos_ref)
     df_refug_data = pd.DataFrame(refug_data)
     gdf_refug_data = gpd.GeoDataFrame(df_refug_data, geometry='geometry')
     gdf_refug_data.set_crs("EPSG:4326", inplace=True)
@@ -178,7 +178,6 @@ def obtener_edificios_mas_cercanos(df1, df2, G, output_path,max_distance):
 
             # Agregar los datos al listado
             data.append({
-                'territory': getattr(row, 'subarea', "Unknown"),
                 'building_type': building_type,
                 'osmid': getattr(row, 'osm_id', None),
                 'coord': (lat2, lon2),
@@ -192,7 +191,6 @@ def obtener_edificios_mas_cercanos(df1, df2, G, output_path,max_distance):
 
     # Verificar si se recopilaron datos
     if not data:
-#        print(" No se encontraron edificios cercanos.")
         return
     
     # Convertir la lista de datos a un DataFrame antes de exportar
@@ -208,13 +206,17 @@ def obtener_edificios_mas_cercanos(df1, df2, G, output_path,max_distance):
     except Exception as e:
         print(f"Error al guardar el archivo CSV: {e}")
         
-def read_doc(data_path, doc_name, doc_type, city, data=None):
+def read_doc(data_path, doc_name, doc_type, city, building, pos_ref):
     if doc_type == '.csv':
         try:
             output = pd.read_csv(data_path / (doc_name + doc_type))
             print(f'{doc_name + doc_type} readed.')
         except Exception as e:
-            output = obtener_dataframe_direcciones(data)
+            if doc_name == 'df_residences':
+                type_of_services = building
+            else:
+                type_of_services = pos_ref
+            output = obtener_dataframe_direcciones(city, type_of_services)
             output.to_csv(data_path / (doc_name + doc_type), index=False)
     else:
         # Para tipos de documentos distintos a .csv (e.g., archivos de red)
@@ -327,7 +329,7 @@ def listar_buildings_por_numero(carpeta):
     # Elimina duplicados y ordena por número
     return sorted(set(buildings), key=lambda x: int(x.split('_')[1]))
 
-def optimization(hour_list, point_list, results_path):
+def optimization(hour_list, point_list, results_path, city, df_feasible_shelters):
     if not os.path.exists(f'{results_path}/df_optimization.csv'):
         for current_time in tqdm(hour_list, desc=f'Optimizing hours: '):
             rows = point_list[point_list['time'] == current_time.strftime('%Y-%m-%d %H:%M:%S')]
@@ -342,7 +344,6 @@ def optimization(hour_list, point_list, results_path):
                 help_independent = rows[rows['osmid'] == new_rows.iloc[0]['osmid']]['points'].values[0]
                 new_row_optimization = pd.DataFrame({'time': [new_rows['time'][0]],
                                                     'osmid': [new_rows['osmid'][0]],
-                                                    'subarea': [new_rows.get('subarea', np.nan)[0]],
                                                     'help_convined': [new_rows['points'][0]],
                                                     'help_independent': [help_independent]}) 
                 if 'df_optimization' not in locals():
@@ -352,13 +353,22 @@ def optimization(hour_list, point_list, results_path):
 
                 new_rows['buildings'] = new_rows['buildings'].apply(lambda x: [item for item in x if item not in supplied_buildings])
                 new_rows['points'] = new_rows['buildings'].apply(len)
-                
-        df_optimization.to_csv(f'{results_path}/df_optimization.csv', index=False)
+        
+        df_optimization = pd.merge(df_optimization, df_feasible_shelters[['building_type_name', 'osm_id']], left_on='osmid', right_on='osm_id', how='left')
+        
+        df_optimization.to_csv(f'{results_path}/{city}.csv', index=False)
+        files_to_delete = [
+            f'{results_path}/point_list_{len(hour_list)}_finished.csv',
+            f'{results_path}/point_list_{len(hour_list)}.csv']
+
+        for file in files_to_delete:
+            if os.path.exists(file):
+                os.remove(file)
     else:
         print(f'Reading df_optimization ...')
-        df_optimization = pd.read_csv(f'{results_path}/df_optimization.csv')
+        df_optimization = pd.read_csv(f'{results_path}/{city}.csv')
         print(f'    [Done]') 
-    return df_optimization
+    return
 
 def process_and_save_dataframes(df_optimization, results_path, city, hour_list):
     # Verificar si la columna 'time' ya está en formato datetime
@@ -390,7 +400,7 @@ def process_and_save_dataframes(df_optimization, results_path, city, hour_list):
     reorder_and_save(df_daily, 'date', city)
     
     files_to_delete = [
-        f'{results_path}/df_optimization.csv',
+#        f'{results_path}/df_optimization.csv',
         f'{results_path}/point_list_{len(hour_list)}_finished.csv',
         f'{results_path}/point_list_{len(hour_list)}.csv']
 
@@ -415,9 +425,7 @@ def get_max_existing_building(data_path):
     
     return max_number
 
-
-
-def process_city(city, main_path, results_path, hour_list, max_distance):
+def process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):
     result_file = results_path / f"{city}.csv"
     if result_file.exists():
         print(f'Analysis for {city} done.')
@@ -428,11 +436,11 @@ def process_city(city, main_path, results_path, hour_list, max_distance):
     
     # Lectura de documentos
     docs_to_read = [
-        ['df_residences', '.csv', [city, "building"]],
-        ['df_feasible_shelters', '.csv', [city, "poss_ref"]],
-        ['walk', '.graphml', None]
+        ['df_residences', '.csv'],
+        ['df_feasible_shelters', '.csv'],
+        ['walk', '.graphml']
     ]
-    df_residences, df_feasible_shelters, G = [read_doc(data_path, doc_name, doc_type, city, data) for doc_name, doc_type, data in docs_to_read]
+    df_residences, df_feasible_shelters, G = [read_doc(data_path, doc_name, doc_type, city, building, pos_ref) for doc_name, doc_type in docs_to_read]
     
     # Crear directorio si no existe
     buildings_distances_path = data_path / 'Buildings Distances'
@@ -460,8 +468,6 @@ def process_city(city, main_path, results_path, hour_list, max_distance):
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
     point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path)
-    df_optimization = optimization(hour_list, point_list, results_path)
-    
-    process_and_save_dataframes(df_optimization, results_path, city, hour_list)
+    optimization(hour_list, point_list, results_path, city, df_feasible_shelters)
     
     print(f'Analysis for {city} done.')
