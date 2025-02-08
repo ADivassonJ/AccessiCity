@@ -75,9 +75,9 @@ def get_osm_elements(area_name, poss_ref):
     return pd.DataFrame(filtered_data)
 
 def osmid_reform(row):
-    osmid = row.get('osmid')
-    element_type = row.get('element_type')
-
+    osmid = row.get('id')
+    element_type = row.get('element')
+    
     if pd.isna(osmid) or pd.isna(element_type):
         return None  # Si faltan datos, devolver None
     
@@ -266,6 +266,7 @@ def process_data(hour_list, buildings, distances_path, max_distance, results_pat
                     continue
                 
                 buildin_names = df_considered.loc[:, 'osmid']
+                
                 list_buildings_considered.extend(buildin_names.tolist())
                 
                 for b, b_name in enumerate(buildin_names):                   
@@ -449,15 +450,17 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     # Crear directorio si no existe
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
-
+    
+    '''
     process_func = partial(procesar_edificio,
-                           buildings_distances_path=buildings_distances_path,
-                           df_feasible_shelters=df_feasible_shelters, 
-                           G=G, 
-                           max_distance=max_distance)
-
+                        buildings_distances_path=buildings_distances_path,
+                        df_feasible_shelters=df_feasible_shelters, 
+                        G=G, 
+                        max_distance=max_distance)
+    
     with ThreadPoolExecutor() as executor:
         list(executor.map(process_func, df_residences.itertuples(index=False)))
+    '''
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
