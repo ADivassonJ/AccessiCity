@@ -8,11 +8,11 @@ import pandas as pd
 import os
 import re
 import ast
-import srtm
-import pandas as pd
-from tqdm import tqdm
+import shutil
 import networkx as nx
 import geopandas as gpd
+from functools import partial
+from concurrent.futures import ThreadPoolExecutor
 
 def get_osm_elements(area_name, poss_ref):
     """
@@ -231,13 +231,6 @@ def read_doc(data_path, doc_name, doc_type, city, building, pos_ref):
         except Exception as e:
             print(f'Cargando geodatos de {city} de calles:')
             output = ox.graph_from_place(city, network_type='walk')
-            elevation_data = srtm.get_data()
-            for node, data in output.nodes(data=True):
-                lat = data['y']
-                lon = data['x']
-                elevation = elevation_data.get_elevation(lat, lon, approximate=True)  # Elevación en metros
-                data['elevation'] = elevation
-            ox.elevation.add_edge_grades(output, add_absolute=True)
             ox.save_graphml(output, data_path / (doc_name + doc_type))
     return output
 
@@ -254,7 +247,7 @@ def process_data(hour_list, buildings, distances_path, max_distance, results_pat
         if os.path.exists(f'{results_path}/point_list_{len(hour_list)}.csv'):
             point_list = pd.read_csv(f'{results_path}/point_list_{len(hour_list)}.csv')
         
-        for time, current_time in tqdm(enumerate(hour_list), total=len(hour_list), desc=f'Processing each hour: '):
+        for time, current_time in enumerate(hour_list):
             actual_point_list = pd.DataFrame(columns=['osmid', 'type','time', 'points', 'buildings'])
             
             list_buildings_considered = []
@@ -330,7 +323,7 @@ def listar_buildings_por_numero(carpeta):
 
 def optimization(hour_list, point_list, results_path, city, df_feasible_shelters):
     if not os.path.exists(f'{results_path}/df_optimization.csv'):
-        for current_time in tqdm(hour_list, desc=f'Optimizing hours: '):
+        for current_time in hour_list:
             rows = point_list[point_list['time'] == current_time.strftime('%Y-%m-%d %H:%M:%S')]
             new_rows = rows.copy()        
             new_rows['buildings'] = new_rows['buildings'].apply(ast.literal_eval)
@@ -424,14 +417,11 @@ def get_max_existing_building(data_path):
     
     return max_number
 
-def procesar_edificio(building_residential, max_existing, buildings_distances_path, df_feasible_shelters, G, max_distance):
+def procesar_edificio(building_residential, buildings_distances_path, df_feasible_shelters, G, max_distance):
     try:
         building_number = int(re.search(r'\d+', building_residential.name).group())
     except AttributeError:
         return  # Saltar si no hay número en el nombre
-
-    if building_number <= max_existing:
-        return  # Saltar si ya se ha procesado
     
     file_name_feasible = f"{building_residential.name}_feasible.csv"
     input_path_feasible = buildings_distances_path / file_name_feasible
@@ -459,20 +449,15 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     # Crear directorio si no existe
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
-    
-    # Obtener el archivo con el número más alto existente
-    max_existing = get_max_existing_building(data_path)
 
-    process_func = partial(procesar_edificio, 
-                           max_existing=max_existing, 
+    process_func = partial(procesar_edificio,
                            buildings_distances_path=buildings_distances_path,
                            df_feasible_shelters=df_feasible_shelters, 
                            G=G, 
                            max_distance=max_distance)
 
     with ThreadPoolExecutor() as executor:
-        list(tqdm(executor.map(process_func, df_residences.itertuples(index=False)), 
-                  desc='Reading buildings docs: ', total=len(df_residences)))
+        list(executor.map(process_func, df_residences.itertuples(index=False)))
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
