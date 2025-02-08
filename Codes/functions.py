@@ -448,25 +448,22 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     # Obtener el archivo con el número más alto existente
     max_existing = get_max_existing_building(data_path)
 
-    # Iterar sobre los edificios comenzando desde el más alto existente
-    for building_residential in tqdm(df_residences.itertuples(index=False), desc='Reading buildings docs: ', total=len(df_residences)):
-        try:
-            building_number = int(re.search(r'\d+', building_residential.name).group())
-        except AttributeError:
-            continue  # Saltar si no hay número en el nombre
+    process_func = partial(procesar_edificio, 
+                           max_existing=max_existing, 
+                           buildings_distances_path=buildings_distances_path,
+                           df_feasible_shelters=df_feasible_shelters, 
+                           G=G, 
+                           max_distance=max_distance)
 
-        if building_number <= max_existing:
-            continue  # Saltar si ya se ha procesado
-        
-        file_name_feasible = f"{building_residential.name}_feasible.csv"
-        input_path_feasible = buildings_distances_path / file_name_feasible
-        
-        if not input_path_feasible.exists():
-            obtener_edificios_mas_cercanos(building_residential, df_feasible_shelters, G, str(input_path_feasible), max_distance)
+    with ThreadPoolExecutor() as executor:
+        list(tqdm(executor.map(process_func, df_residences.itertuples(index=False)), 
+                  desc='Reading buildings docs: ', total=len(df_residences)))
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
     point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path)
-    optimization(hour_list, point_list, results_path, city, df_feasible_shelters)
+    optimization(hour_list, point_list, results_path, city, df_feasible_shelters)  
+    
+    shutil.rmtree(buildings_distances_path)
     
     print(f'Analysis for {city} done.')
