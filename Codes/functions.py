@@ -424,6 +424,21 @@ def get_max_existing_building(data_path):
     
     return max_number
 
+def procesar_edificio(building_residential, max_existing, buildings_distances_path, df_feasible_shelters, G, max_distance):
+    try:
+        building_number = int(re.search(r'\d+', building_residential.name).group())
+    except AttributeError:
+        return  # Saltar si no hay número en el nombre
+
+    if building_number <= max_existing:
+        return  # Saltar si ya se ha procesado
+    
+    file_name_feasible = f"{building_residential.name}_feasible.csv"
+    input_path_feasible = buildings_distances_path / file_name_feasible
+    
+    if not input_path_feasible.exists():
+        obtener_edificios_mas_cercanos(building_residential, df_feasible_shelters, G, str(input_path_feasible), max_distance)
+
 def process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):
     result_file = results_path / f"{city}.csv"
     if result_file.exists():
