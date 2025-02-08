@@ -4,11 +4,18 @@ except ImportError:
     import subprocess
     subprocess.check_call(["pip", "install", "osmnx"])
     import osmnx as ox
-import pandas as pd
+try:
+    import sklearn
+except ImportError:
+    import subprocess
+    subprocess.check_call(["pip", "install", "scikit-learn"])
+    import sklearn
+
 import os
 import re
 import ast
 import shutil
+import pandas as pd
 import networkx as nx
 import geopandas as gpd
 from functools import partial
@@ -451,7 +458,7 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
     
-    '''
+    
     process_func = partial(procesar_edificio,
                         buildings_distances_path=buildings_distances_path,
                         df_feasible_shelters=df_feasible_shelters, 
@@ -460,7 +467,7 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     
     with ThreadPoolExecutor() as executor:
         list(executor.map(process_func, df_residences.itertuples(index=False)))
-    '''
+    
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
