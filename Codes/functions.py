@@ -1,9 +1,14 @@
+try:
+    import osmnx as ox
+except ImportError:
+    import subprocess
+    subprocess.check_call(["pip", "install", "osmnx"])
+    import osmnx as ox
+import pandas as pd
 import os
 import re
 import ast
 import srtm
-import numpy as np
-import osmnx as ox
 import pandas as pd
 from tqdm import tqdm
 import networkx as nx
