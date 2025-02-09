@@ -1,18 +1,4 @@
-import sys
-import subprocess
-
-try:
-    import osmnx as ox
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "osmnx"])
-    import osmnx as ox
-
-try:
-    import sklearn
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
-    import sklearn
-
+import osmnx as ox
 import os
 import re
 import ast
@@ -484,14 +470,16 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
     
-    process_func = partial(procesar_edificio,
+   
+    '''process_func = partial(procesar_edificio,
                         buildings_distances_path=buildings_distances_path,
                         df_feasible_shelters=df_feasible_shelters, 
                         G=G, 
                         max_distance=max_distance)
     
     with ThreadPoolExecutor() as executor:
-        list(executor.map(process_func, df_residences.itertuples(index=False)))
+        list(executor.map(process_func, df_residences.itertuples(index=False)))'''
+    
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
