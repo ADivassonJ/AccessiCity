@@ -471,14 +471,14 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     os.makedirs(buildings_distances_path, exist_ok=True)
     
    
-    '''process_func = partial(procesar_edificio,
+    process_func = partial(procesar_edificio,
                         buildings_distances_path=buildings_distances_path,
                         df_feasible_shelters=df_feasible_shelters, 
                         G=G, 
                         max_distance=max_distance)
     
     with ThreadPoolExecutor() as executor:
-        list(executor.map(process_func, df_residences.itertuples(index=False)))'''
+        list(executor.map(process_func, df_residences.itertuples(index=False)))
     
     
     # Procesamiento posterior
