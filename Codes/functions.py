@@ -16,6 +16,7 @@ except ImportError:
 import os
 import re
 import ast
+import math
 import shutil
 import pandas as pd
 import networkx as nx
@@ -84,8 +85,8 @@ def get_osm_elements(area_name, poss_ref):
     return pd.DataFrame(filtered_data)
 
 def osmid_reform(row):
-    osmid = row.get('id')
-    element_type = row.get('element')
+    osmid = row.get('osmid')
+    element_type = row.get('element_type')
     
     if pd.isna(osmid) or pd.isna(element_type):
         return None  # Si faltan datos, devolver None
@@ -132,6 +133,29 @@ def obtener_dataframe_direcciones(city, pos_ref):
     
     return gdf_refug_data
 
+def distancia_haversine(lat1, lon1, lat2, lon2):
+    # Convertir las coordenadas de grados a radianes
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+    
+    # Diferencias de latitud y longitud
+    delta_lat = lat2_rad - lat1_rad
+    delta_lon = lon2_rad - lon1_rad
+    
+    # Fórmula de Haversine
+    a = math.sin(delta_lat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+    # Radio de la Tierra en metros
+    radio_tierra = 6371000  # en metros
+    
+    # Distancia final
+    distancia = radio_tierra * c
+    
+    return distancia
+
 def obtener_edificios_mas_cercanos(df1, df2, G, output_path,max_distance):
     """
     Obtiene una lista con los nombres de los edificios más cercanos y la distancia caminada
@@ -163,7 +187,7 @@ def obtener_edificios_mas_cercanos(df1, df2, G, output_path,max_distance):
         lat2, lon2 = row.lat, row.lon
         
         # Calcular distancia euclidiana
-        euc_dist = ox.distance.great_circle(lat1, lon1, lat2, lon2)
+        euc_dist = distancia_haversine(lat1, lon1, lat2, lon2)
         if euc_dist > max_distance:  # Filtrar por distancia máxima
             continue
 
