@@ -1,14 +1,16 @@
+import sys
+import subprocess
+
 try:
     import osmnx as ox
 except ImportError:
-    import subprocess
-    subprocess.check_call(["pip", "install", "osmnx"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "osmnx"])
     import osmnx as ox
+
 try:
     import sklearn
 except ImportError:
-    import subprocess
-    subprocess.check_call(["pip", "install", "scikit-learn"])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "scikit-learn"])
     import sklearn
 
 import os
@@ -44,7 +46,7 @@ def get_osm_elements(area_name, poss_ref):
     }
     
     # Descargar datos de la zona especificada
-    gdf = ox.features_from_place(area_name, tags)
+    gdf = ox.geometries_from_place(area_name, tags)
     
     # Convertir a DataFrame
     data = gdf.reset_index()
