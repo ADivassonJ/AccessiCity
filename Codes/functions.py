@@ -258,7 +258,7 @@ def filtrar_por_distancia(df, max_distance):
     df_filtrado = df[df['distance'] <= max_distance]
     return df_filtrado
 
-def process_data(hour_list, buildings, distances_path, max_distance, results_path):
+def process_data(hour_list, buildings, distances_path, max_distance, results_path,city):
     '''
     buildings: nombres de los edificios guardados en la carpeta dada
     ''' 
@@ -312,12 +312,12 @@ def process_data(hour_list, buildings, distances_path, max_distance, results_pat
                 point_list = actual_point_list.copy()
             else:            
                 point_list = pd.concat([point_list, actual_point_list], ignore_index=True)
-            point_list.to_csv(f'{results_path}/point_list_{len(hour_list)}.csv', index=False)
-        point_list.to_csv(f'{results_path}/point_list_{len(hour_list)}_finished.csv', index=False) 
+            point_list.to_csv(f'{results_path}/{city}_point_list_{len(hour_list)}.csv', index=False)
+        point_list.to_csv(f'{results_path}/{city}_point_list_{len(hour_list)}_finished.csv', index=False) 
         point_list['buildings'] = point_list['buildings'].apply(str)
     else:
         print(f'Reading df_point_list ...')
-        point_list = pd.read_csv(f'{results_path}/point_list_{len(hour_list)}_finished.csv')
+        point_list = pd.read_csv(f'{results_path}/{city}_point_list_{len(hour_list)}_finished.csv')
         print(f'    [Done]')    
     return point_list
 
@@ -342,7 +342,7 @@ def listar_buildings_por_numero(carpeta):
     return sorted(set(buildings), key=lambda x: int(x.split('_')[1]))
 
 def optimization(hour_list, point_list, results_path, city, df_feasible_shelters):
-    if not os.path.exists(f'{results_path}/df_optimization.csv'):
+    if not os.path.exists(f'{results_path}/{city}_df_optimization.csv'):
         for current_time in hour_list:
             rows = point_list[point_list['time'] == current_time.strftime('%Y-%m-%d %H:%M:%S')]
             new_rows = rows.copy()        
@@ -370,8 +370,8 @@ def optimization(hour_list, point_list, results_path, city, df_feasible_shelters
         
         df_optimization.to_csv(f'{results_path}/{city}.csv', index=False)
         files_to_delete = [
-            f'{results_path}/point_list_{len(hour_list)}_finished.csv',
-            f'{results_path}/point_list_{len(hour_list)}.csv']
+            f'{results_path}/{city}_point_list_{len(hour_list)}_finished.csv',
+            f'{results_path}/{city}_point_list_{len(hour_list)}.csv']
 
         for file in files_to_delete:
             if os.path.exists(file):
@@ -413,8 +413,8 @@ def process_and_save_dataframes(df_optimization, results_path, city, hour_list):
     
     files_to_delete = [
 #        f'{results_path}/df_optimization.csv',
-        f'{results_path}/point_list_{len(hour_list)}_finished.csv',
-        f'{results_path}/point_list_{len(hour_list)}.csv']
+        f'{results_path}/{city}_point_list_{len(hour_list)}_finished.csv',
+        f'{results_path}/{city}_point_list_{len(hour_list)}.csv']
 
     for file in files_to_delete:
         if os.path.exists(file):
@@ -470,20 +470,19 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
     
-   
     process_func = partial(procesar_edificio,
                         buildings_distances_path=buildings_distances_path,
                         df_feasible_shelters=df_feasible_shelters, 
                         G=G, 
                         max_distance=max_distance)
-    
-    with ThreadPoolExecutor() as executor:
-        list(executor.map(process_func, df_residences.itertuples(index=False)))
-    
+
+    # Procesamiento en un solo hilo (sin paralelización)
+    for residence in df_residences.itertuples(index=False):
+        process_func(residence)
     
     # Procesamiento posterior
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
-    point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path)
+    point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path,city)
     optimization(hour_list, point_list, results_path, city, df_feasible_shelters)  
     
     shutil.rmtree(buildings_distances_path)
