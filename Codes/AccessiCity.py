@@ -14,7 +14,7 @@ pos_ref = {"amenity": ["community_centre", "place_of_worship", "school"],
 def setup_environment():
     """Configura las variables del entorno."""
     cities = [
-        "Bilbao","Madrid", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
+        "Bilbao", "Madrid", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
         "London", "Paris", "Berlin", "New York City", "Rome", "Amsterdam", "Vienna", "Barcelona", "Milan", "Stockholm",
         "Tokyo", "Osaka", "Seoul", "Shanghai", "Beijing", "Hong Kong", "Bangkok", "Singapore", "Kuala Lumpur", "Jakarta",
         "Sydney", "Melbourne", "Brisbane", "Perth", "Auckland", "Toronto", "Vancouver", "Montreal", "Mexico City", "São Paulo",
