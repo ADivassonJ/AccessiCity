@@ -4,11 +4,17 @@ import re
 import ast
 import math
 import shutil
+import smtplib
+import numpy as np
 import pandas as pd
 import networkx as nx
 import geopandas as gpd
+import multiprocessing as mp
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor
+from email.message import EmailMessage
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 def get_osm_elements(area_name, poss_ref):
     """
@@ -449,7 +455,20 @@ def procesar_edificio(building_residential, buildings_distances_path, df_feasibl
     if not input_path_feasible.exists():
         obtener_edificios_mas_cercanos(building_residential, df_feasible_shelters, G, str(input_path_feasible), max_distance)
 
-def process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):
+def procesar_bloque(residences_chunk, buildings_distances_path, df_feasible_shelters, G, max_distance):
+    """
+    Función que procesa un bloque de residencias en paralelo.
+    """
+    process_func = partial(procesar_edificio,
+                           buildings_distances_path=buildings_distances_path,
+                           df_feasible_shelters=df_feasible_shelters, 
+                           G=G, 
+                           max_distance=max_distance)
+    
+    for residence in residences_chunk:
+        process_func(residence)
+
+def process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):   
     result_file = results_path / f"{city}.csv"
     if result_file.exists():
         print(f'Analysis for {city} done.')
@@ -466,25 +485,27 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     ]
     df_residences, df_feasible_shelters, G = [read_doc(data_path, doc_name, doc_type, city, building, pos_ref) for doc_name, doc_type in docs_to_read]
     
-    # Crear directorio si no existe
     buildings_distances_path = data_path / 'Buildings Distances'
     os.makedirs(buildings_distances_path, exist_ok=True)
     
-    process_func = partial(procesar_edificio,
-                        buildings_distances_path=buildings_distances_path,
-                        df_feasible_shelters=df_feasible_shelters, 
-                        G=G, 
-                        max_distance=max_distance)
-
-    # Procesamiento en un solo hilo (sin paralelización)
-    for residence in df_residences.itertuples(index=False):
-        process_func(residence)
+    num_cpus = min(mp.cpu_count(), len(df_residences))  # Usar el número óptimo de CPUs
+    num_chunks = max(num_cpus, 1)  # Garantiza al menos 1 chunk
     
-    # Procesamiento posterior
+    # Dividir df_residences en partes balanceadas
+    df_chunks = np.array_split(df_residences.to_records(index=False), num_chunks)
+    
+    pool = mp.Pool(num_cpus)
+    func = partial(procesar_bloque, buildings_distances_path=buildings_distances_path, 
+                   df_feasible_shelters=df_feasible_shelters, G=G, max_distance=max_distance)
+
+    pool.map(func, df_chunks)
+    pool.close()
+    pool.join()
+    
     buildings = listar_buildings_por_numero(str(buildings_distances_path))    
-    point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path,city)
+    point_list = process_data(hour_list, buildings, str(buildings_distances_path), max_distance, results_path, city)
     optimization(hour_list, point_list, results_path, city, df_feasible_shelters)  
     
     shutil.rmtree(buildings_distances_path)
     
-    print(f'Analysis for {city} done.')
+    send_email(subject, message_body, sender_email, receiver_email, smtp_server, smtp_port, smtp_username, smtp_password)

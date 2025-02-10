@@ -17,8 +17,8 @@ pos_ref = {"amenity": ["community_centre", "place_of_worship", "school"],
 def setup_environment():
     """Configura las variables del entorno."""
     cities = [
-        "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
-        "London", "Paris", "Berlin", "Madrid", "Rome", "Amsterdam", "Vienna", "Barcelona", "Milan", "Stockholm",
+        "Bilbao","Madrid", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
+        "London", "Paris", "Berlin", "New York City", "Rome", "Amsterdam", "Vienna", "Barcelona", "Milan", "Stockholm",
         "Tokyo", "Osaka", "Seoul", "Shanghai", "Beijing", "Hong Kong", "Bangkok", "Singapore", "Kuala Lumpur", "Jakarta",
         "Sydney", "Melbourne", "Brisbane", "Perth", "Auckland", "Toronto", "Vancouver", "Montreal", "Mexico City", "São Paulo",
         "Rio de Janeiro", "Buenos Aires", "Santiago", "Bogotá", "Lima", "Caracas", "Quito", "Havana", "San Juan", "Montevideo",
@@ -47,11 +47,14 @@ if __name__ == "__main__":
 
     # Obtener el número de procesos óptimos
     num_workers = min(multiprocessing.cpu_count(), len(cities))  
-    print(f"Using {num_workers} workers to process cities.")
 
+    for city in cities:
+        process_single_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)
+        
+'''     print(f"Using {num_workers} workers to process cities.")
     # Ejecutar en paralelo con ProcessPoolExecutor
-    with ProcessPoolExecutor(max_workers=1) as executor:
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
         executor.map(process_single_city, cities, [main_path] * len(cities),
                      [results_path] * len(cities), [hour_list] * len(cities),
                      [max_distance] * len(cities), [building] * len(cities), 
-                     [pos_ref] * len(cities))
+                     [pos_ref] * len(cities))'''
