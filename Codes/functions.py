@@ -13,8 +13,6 @@ import multiprocessing as mp
 from functools import partial
 from email.message import EmailMessage
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 def get_osm_elements(area_name, poss_ref):
     """
@@ -470,10 +468,11 @@ def procesar_bloque(residences_chunk, buildings_distances_path, df_feasible_shel
 
 def process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):   
     result_file = results_path / f"{city}.csv"
+    
     if result_file.exists():
         print(f'Analysis for {city} done.')
         return
-    
+       
     data_path = main_path / f'Data/{city}'
     os.makedirs(data_path, exist_ok=True)
     
@@ -508,4 +507,4 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     
     shutil.rmtree(buildings_distances_path)
     
-    send_email(subject, message_body, sender_email, receiver_email, smtp_server, smtp_port, smtp_username, smtp_password)
+    print(f'Calculation for {city} DONE.')

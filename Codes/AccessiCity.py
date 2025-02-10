@@ -2,9 +2,6 @@ import os
 import functions
 from pathlib import Path
 from datetime import datetime, timedelta
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor
-import functions
 
 building = {"building": ["apartments", "barracks", "bungalow", "cabin", "detached", "annexe", "dormitory",
                          "farm", "house", "houseboat", "residential", "semidetached_house", "static_caravan",
@@ -35,26 +32,11 @@ def setup_environment():
     hour_list = [start_date + timedelta(hours=i) for i in range(int((end_date - start_date).total_seconds() / 3600) + 1)]
     return cities, year, max_distance, hour_list
 
-# Definir la función fuera del bloque __main__
-def process_single_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref):
-    functions.process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)
-
 if __name__ == "__main__":
     cities, year, max_distance, hour_list = setup_environment()
     main_path = Path(__file__).resolve().parent.parent  
     results_path = main_path / 'Results'
     os.makedirs(results_path, exist_ok=True)
-
-    # Obtener el número de procesos óptimos
-    num_workers = min(multiprocessing.cpu_count(), len(cities))  
-
+    
     for city in cities:
-        process_single_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)
-        
-'''     print(f"Using {num_workers} workers to process cities.")
-    # Ejecutar en paralelo con ProcessPoolExecutor
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        executor.map(process_single_city, cities, [main_path] * len(cities),
-                     [results_path] * len(cities), [hour_list] * len(cities),
-                     [max_distance] * len(cities), [building] * len(cities), 
-                     [pos_ref] * len(cities))'''
+        functions.process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)
