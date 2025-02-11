@@ -1,0 +1,4 @@
+building_type,osmid,coord,distance,rise,fall
+amenity_place_of_worship,W432632128,"(-2.231292575344501, -79.91959021221446)",51.038,0,0
+amenity_school,W432642366,"(-2.2318807887966536, -79.919159230318)",104.642,0,0
+amenity_place_of_worship,N6579045385,"(-2.2308297, -79.9208575)",208.487,0,0
