@@ -14,30 +14,12 @@ pos_ref = {"amenity": ["community_centre", "place_of_worship", "school"],
 def setup_environment():
     """Configura las variables del entorno."""
     cities = [
-        # Europe
-        "Florence", "Nice", "Bratislava", "Malmö", "Ghent", "Linz", "Aarhus", "Cluj-Napoca",
-        "Frankfurt (Oder)", "Rijeka",
-
-        # North America
-        "Tampa", "Tulsa", "Bakersfield", "Orlando", "Winnipeg", "Quebec City", "Edmonton",
-        "Puebla", "Mérida", "Tijuana",
-
         # South America
         "Córdoba", "Rosario", "Mar del Plata", "Belo Horizonte", "Campinas", "Porto Alegre",
         "Antofagasta", "La Serena", "Arequipa", "Guayaquil",
-
-        # Asia
-        "Hiroshima", "Okayama", "Nagasaki", "Chiang Mai", "Malang", "Medan", "Samarkand",
-        "Ulsan", "Daegu", "Jaipur",
-
-        # Africa
-        "Durban", "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
-        "Accra", "Dakar", "Windhoek",
-
-        # Oceania
-        "Wellington", "Christchurch", "Townsville", "Cairns", "Darwin"
     ]
-
+    cities = cities[::-1]
+    
     year = 2024
     max_distance = 300
     start_date = datetime(year, 1, 1, 0, 0)

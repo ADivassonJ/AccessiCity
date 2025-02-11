@@ -1,18 +1,16 @@
-import osmnx as ox
 import os
 import re
 import ast
 import math
 import shutil
-import smtplib
+import osmnx as ox
 import numpy as np
 import pandas as pd
 import networkx as nx
 import geopandas as gpd
 import multiprocessing as mp
 from functools import partial
-from email.message import EmailMessage
-import smtplib
+from shapely.geometry import box
 
 def get_osm_elements(area_name, poss_ref):
     """
@@ -492,6 +490,65 @@ def process_city(city, main_path, results_path, hour_list, max_distance, buildin
     
     # Dividir df_residences en partes balanceadas
     df_chunks = np.array_split(df_residences.to_records(index=False), num_chunks)
+    
+    # Convertir el grafo a GeoDataFrame
+    gdf_edges = ox.graph_to_gdfs(G, nodes=False)
+
+    # Obtener los límites del mapa
+    minx, miny, maxx, maxy = gdf_edges.total_bounds
+    width = maxx - minx
+    height = maxy - miny
+
+    # Dividir en una cuadrícula de num_chunks partes
+    num_rows = int(np.sqrt(num_chunks))  # Suponiendo una división cuadrada
+    num_cols = int(np.ceil(num_chunks / num_rows))
+
+    chunk_width = width / num_cols
+    chunk_height = height / num_rows
+
+    # Crear la lista para almacenar los chunks
+    chunks = []
+
+    for i in range(num_cols):
+        for j in range(num_rows):
+            # Definir límites del chunk con superposición
+            xmin = max(minx + i * chunk_width - max_distance, minx)
+            xmax = min(minx + (i + 1) * chunk_width + max_distance, maxx)
+            ymin = max(miny + j * chunk_height - max_distance, miny)
+            ymax = min(miny + (j + 1) * chunk_height + max_distance, maxy)
+
+            chunk_box = box(xmin, ymin, xmax, ymax)
+            chunk_gdf = gdf_edges[gdf_edges.intersects(chunk_box)]  # Filtrar calles dentro del chunk
+
+            # Asegurarse de que chunk_gdf sea un GeoDataFrame
+            if not isinstance(chunk_gdf, gpd.GeoDataFrame):
+                chunk_gdf = gpd.GeoDataFrame(chunk_gdf, geometry='geometry')  # Especificar la columna de geometría
+
+            # Filtrar solo las columnas compatibles con Shapefile (descartar listas y objetos no válidos)
+            valid_columns = [col for col in chunk_gdf.columns if chunk_gdf[col].apply(lambda x: isinstance(x, (int, float, str))).all()]
+            chunk_gdf = chunk_gdf[valid_columns]
+
+            # Asegurar que todas las geometrías sean válidas
+            chunk_gdf = chunk_gdf[chunk_gdf.is_valid]
+
+            # Verificar si el GeoDataFrame está vacío antes de intentar guardar
+            if not chunk_gdf.empty:
+                # Guardar el shapefile
+                chunk_gdf.to_file(f"map_chunk_{i}_{j}.shp")
+
+                # Guardar en lista para referencia
+                chunks.append(chunk_gdf)
+            else:
+                print(f"Chunk {i}_{j} está vacío y no se guardó.")
+
+    # Para visualización opcional
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(10, 10))
+    gdf_edges.plot(ax=ax, color="gray", linewidth=0.5, alpha=0.5)  # Mapa base
+    for chunk in chunks:
+        chunk.plot(ax=ax, edgecolor="red", linewidth=1.5, alpha=0.7)  # Mapa recortado
+    plt.title("Chunks del mapa con superposición")
+    plt.show()
     
     pool = mp.Pool(num_cpus)
     func = partial(procesar_bloque, buildings_distances_path=buildings_distances_path, 
