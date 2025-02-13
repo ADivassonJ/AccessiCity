@@ -7,8 +7,13 @@ building = {"building": ["apartments", "barracks", "bungalow", "cabin", "detache
                          "farm", "house", "houseboat", "residential", "semidetached_house", "static_caravan",
                          "stilt_house", "terrace", "trullo", "yes"]}
 
-pos_ref = {"amenity": ["community_centre", "place_of_worship", "school"],
-           "tourism": "hostel",
+pos_ref = {"building": ["public", "train_station", "retail"],
+           "amenity": ["public", "townhall", "sport_centre", "information", "mall", "library", "museum",
+                       "community_centre", "arts_centre", "place_of_worship", "exhibition_centre", 
+                       "school", "courthouse", "theatre", "police", "marketplace"],
+           "leisure": ["sport_centre", "stadium"],
+           "tourism": ["museum", "hostel", "alpine_hut"],
+           "shop": "mall",
            "railway": "subway_entrance"}
 
 def setup_environment():
