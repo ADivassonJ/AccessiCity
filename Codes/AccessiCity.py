@@ -15,7 +15,7 @@ def setup_environment():
     """Configura las variables del entorno."""
     cities = [
         # Europe
-        "Florence", "Nice", "Bratislava", "Malmö", "Ghent", "Linz", "Aarhus", "Cluj-Napoca",
+        "Linz", "Aarhus Kommune", "Cluj-Napoca",
         "Frankfurt (Oder)", "Rijeka",
 
         # North America
@@ -28,16 +28,18 @@ def setup_environment():
 
         # Asia
         "Hiroshima", "Okayama", "Nagasaki", "Chiang Mai", "Malang", "Medan", "Samarkand",
-        "Ulsan", "Daegu", "Jaipur",
+        "Ulsan ", "Daegu", "Jaipur",
 
         # Africa
         "Durban", "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
         "Accra", "Dakar", "Windhoek",
 
         # Oceania
-        "Wellington", "Christchurch", "Townsville", "Cairns", "Darwin"
+        "Christchurch", "Townsville City", "Cairns Regional"
     ]
 
+    cities = cities[::-1]
+    
     year = 2024
     max_distance = 300
     start_date = datetime(year, 1, 1, 0, 0)

@@ -1,18 +1,16 @@
 import osmnx as ox
+ox.settings.timeout = 500
 import os
 import re
 import ast
 import math
 import shutil
-import smtplib
 import numpy as np
 import pandas as pd
 import networkx as nx
 import geopandas as gpd
 import multiprocessing as mp
 from functools import partial
-from email.message import EmailMessage
-import smtplib
 
 def get_osm_elements(area_name, poss_ref):
     """
