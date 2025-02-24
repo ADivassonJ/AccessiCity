@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --qos=regular
-#SBATCH --job-name=AccessiCity
+#SBATCH --job-name=AccessiCity_v2
 #SBATCH --mem=50gb
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1

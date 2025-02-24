@@ -1,5 +1,5 @@
 import os
-import functions
+import functions_v2
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -21,22 +21,24 @@ def setup_environment():
     cities = [
         # Europe
         "Bilbao", "Florence", "Ghent", "Nice","Linz", "Aarhus Kommune", "Cluj-Napoca",
-        "Frankfurt (Oder)", "Rijeka", "Cluj-Napoca", "Bratislava", "Rijeka", "Malmö"
+        "Frankfurt (Oder)", "Rijeka", "Cluj-Napoca", "Bratislava", "Rijeka", "Malmö",
+        "Katowice", "Veszprem", "Szeged", "Utrecht", "Aveiro", "Tartu", "Vitoria-Gasteiz", "Donostia/San Sebastián",
 
         # North America
         "Tampa", "Tulsa", "Bakersfield", "Orlando", "Winnipeg", "Quebec City", "Edmonton",
-        "Puebla", "Mérida", "Tijuana", "Astana"
+        "Puebla", "Mérida", "Tijuana", "Astana",
 
         # South America
-        "Córdoba", "Rosario", "Mar del Plata", "Belo Horizonte", "Campinas", "Porto Alegre",
-        "Antofagasta", "La Serena", "Arequipa", "Guayaquil",
+        "Córdoba, Argentina", "Rosario, Argentina", "Mar del Plata, Argentina", "Belo Horizonte", "Campinas", "Porto Alegre",
+        "Antofagasta, Provincia de Antofagasta, Región de Antofagasta, Chile", "La Serena, Provincia de Elqui, Región de Coquimbo, Chile",
+        "Arequipa", "Guayaquil",
 
         # Asia
-        "Hiroshima", "Okayama", "Nagasaki", "Chiang Mai", "Malang", "Medan", "Samarkand",
+        "Hiroshima", "Okayama", "Nagasaki", "Chiang Mai City Municipality", "Malang", "Medan", "Samarkand",
         "Ulsan ", "Daegu", "Jaipur",
 
         # Africa
-        "Durban", "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
+        "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
         "Accra", "Dakar", "Windhoek",
 
         # Oceania
@@ -55,8 +57,8 @@ def setup_environment():
 if __name__ == "__main__":
     cities, year, max_distance, hour_list = setup_environment()
     main_path = Path(__file__).resolve().parent.parent  
-    results_path = main_path / 'Results'
+    results_path = main_path / 'Results_v2'
     os.makedirs(results_path, exist_ok=True)
     
     for city in cities:
-        functions.process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)
+        functions_v2.process_city(city, main_path, results_path, hour_list, max_distance, building, pos_ref)

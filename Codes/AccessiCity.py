@@ -16,14 +16,15 @@ def setup_environment():
     cities = [
         # Europe
         "Bilbao", "Florence", "Ghent", "Nice","Linz", "Aarhus Kommune", "Cluj-Napoca",
-        "Frankfurt (Oder)", "Rijeka", "Cluj-Napoca", "Bratislava", "Rijeka", "Malmö"
+        "Frankfurt (Oder)", "Rijeka", "Cluj-Napoca", "Bratislava", "Rijeka", "Malmö",
+        "Katowice", "Veszprem", "Szeged", "Utrecht", "Aveiro", "Tartu", "Vitoria-Gasteiz", "Donostia/San Sebastián",
 
         # North America
         "Tampa", "Tulsa", "Bakersfield", "Orlando", "Winnipeg", "Quebec City", "Edmonton",
-        "Puebla", "Mérida", "Tijuana", "Astana"
+        "Puebla", "Mérida", "Tijuana", "Astana",
 
         # South America
-        "Córdoba", "Rosario", "Mar del Plata", "Belo Horizonte", "Campinas", "Porto Alegre",
+        "Córdoba, Argentina", "Rosario, Argentina", "Mar del Plata, Argentina", "Belo Horizonte", "Campinas", "Porto Alegre",
         "Antofagasta", "La Serena", "Arequipa", "Guayaquil",
 
         # Asia
@@ -31,14 +32,14 @@ def setup_environment():
         "Ulsan ", "Daegu", "Jaipur",
 
         # Africa
-        "Durban", "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
+        "Maputo", "Addis Ababa", "Marrakesh", "Nairobi", "Alexandria", "Suez",
         "Accra", "Dakar", "Windhoek",
 
         # Oceania
         "Christchurch", "Townsville City", "Cairns Regional"
     ]
 
-#    cities = cities[::-1]
+    cities = cities[::-1]
     
     year = 2024
     max_distance = 300

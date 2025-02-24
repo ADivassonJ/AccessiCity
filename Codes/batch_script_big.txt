@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH --qos=regular
+#SBATCH --job-name=AccessiCity
+#SBATCH --mem=100gb
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=16
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+#SBATCH --mail-user=asier.divasson@deusto.es
+#SBATCH --mail-type=ALL
+module load Python
+pip install osmnx scikit-learn
+python Codes/AccessiCity_v1_big.py
