@@ -1,82 +1,13 @@
 import osmnx as ox
 import geopandas as gpd
 import pandas as pd
-import matplotlib.pyplot as plt
+import networkx as nx
 
-
-def get_buffer_union_from_dict(osm_dict, buffer_distance=300, label=""):
-    """
-    Dado un diccionario {nombre: 'W123'/'N123'/'R123'},
-    descarga las geometrías de OSM, las proyecta (EPSG:25830),
-    hace buffer en metros y devuelve un GeoDataFrame con la geometría
-    disuelta (union_all). Si algo falla o está vacío, devuelve None.
-    """
-    if not osm_dict:
-        print(f"  -> No elements in dict for {label}. Skipping.")
-        return None
-
-    print(f"\nProcessing group: {label}")
-    print(f"  -> {len(osm_dict)} OSM IDs")
-
-    df = pd.DataFrame({
-        "name": list(osm_dict.keys()),
-        "osmid_str": list(osm_dict.values()),
-    })
-    df["osm_id"] = df["osmid_str"].apply(lambda x: int(x[1:]))
-
-    # 1) Descargar geometrías
-    try:
-        gdf = ox.geocode_to_gdf(df["osmid_str"].tolist(), by_osmid=True)
-    except Exception as e:
-        print(f"  !! ERROR calling geocode_to_gdf for {label}: {e}")
-        return None
-
-    # 2) Asegurar columna 'osm_id'
-    if "osm_id" not in gdf.columns:
-        if "osmid" in gdf.columns:
-            gdf = gdf.rename(columns={"osmid": "osm_id"})
-        else:
-            print(f"  !! No 'osm_id' or 'osmid' column for {label}. Columns are:")
-            print("   ", list(gdf.columns))
-            return None
-
-    # 3) Filtrar solo los IDs que tenemos en df (por si OSM devuelve algo raro)
-    gdf = gdf[gdf["osm_id"].isin(df["osm_id"])].copy()
-    gdf = gdf[~gdf.geometry.isna()].copy()
-
-    print(f"  -> Valid geometries (non-null) for {label}: {len(gdf)}")
-    if gdf.empty:
-        print(f"  -> No valid geometries for {label}.")
-        return None
-
-    # 4) Proyectar a EPSG:25830 (CRS métrico)
-    try:
-        gdf_proj = gdf.to_crs(epsg=25830)
-        print("  -> Projection to EPSG:25830 successful.")
-    except Exception as e:
-        print("  !! ERROR projecting to EPSG:25830:", e)
-        print("     Using original CRS (buffer distance won't be meters!)")
-        gdf_proj = gdf
-
-    # 5) Buffer y disolver (union_all en la GeoSeries geometry)
-    print(f"  -> Creating {buffer_distance} m buffer for {label}...")
-    gdf_buf = gdf_proj.copy()
-    gdf_buf["geometry"] = gdf_buf.geometry.buffer(buffer_distance)
-
-    print(f"  -> Dissolving overlaps for {label} with union_all()...")
-    union_geom = gdf_buf.geometry.union_all()  # GeoSeries method, no deprecation
-
-    # 6) Devolver como GeoDataFrame
-    gdf_union = gpd.GeoDataFrame(geometry=[union_geom], crs=gdf_proj.crs)
-    print(f"  -> Buffer union geometry created for {label}.")
-
-    return gdf_union
 
 def main():
-    # ------------------------------------------------------------------
-    # 0. Diccionario de IDs de OSM
-    # ------------------------------------------------------------------
-    # Definir horarios de apertura con meses en español
+    # --------------------------------------------------------------
+    # 0. Refugios OUTDOOR / INDOOR (rellena con tus IDs)
+    # --------------------------------------------------------------
     dict_osmid_refug_indoor = {
         # Interior Shelters
         'Edificio San Agustin': 'W248634544',
@@ -219,183 +150,224 @@ def main():
         'Puente Pedro Arrupe (Abandoibarra)': 'R16998640',
     }
 
+    # Tags de edificio
+    building_tags = {
+        "building": [
+            "apartments", "barracks", "bungalow", "cabin", "detached", "annexe",
+            "dormitory", "farm", "house", "houseboat", "residential",
+            "semidetached_house", "static_caravan", "stilt_house", "terrace",
+            "trullo", "yes"
+        ]
+    }
+
     place_name = "Bilbao, Spain"
+    cutoff_m = 100  # distancia en metros por la red
 
-    print("======================================================")
-    print("  300 m buffers OUTDOOR / INDOOR + walk network + limit")
-    print("  Output: static PDF with white background")
-    print("======================================================\n")
+    print("========================================================")
+    print("  Cobertura indoor/outdoor a 300 m por red peatonal")
+    print("========================================================\n")
 
-    # ------------------------------------------------------------------
-    # 1. Buffers OUTDOOR / INDOOR
-    # ------------------------------------------------------------------
-    print("Step 1/4: computing OUTDOOR and INDOOR buffers...")
-    buffer_outdoor = get_buffer_union_from_dict(
-        dict_osmid_refug_outdoor, buffer_distance=300, label="OUTDOOR"
-    )
-    buffer_indoor = get_buffer_union_from_dict(
-        dict_osmid_refug_indoor, buffer_distance=300, label="INDOOR"
-    )
+    # --------------------------------------------------------------
+    # 1. DataFrame de refugios con tipo (outdoor/indoor)
+    # --------------------------------------------------------------
+    print("Paso 1/5: preparando refugios OUTDOOR / INDOOR...")
 
-    # CRS para referencia (usaremos EPSG:25830 como base)
-    # Tomamos el CRS de alguno que no sea None
-    target_crs = "EPSG:25830"
-    if buffer_outdoor is not None:
-        target_crs = buffer_outdoor.crs
-    elif buffer_indoor is not None:
-        target_crs = buffer_indoor.crs
+    registros = []
+    for nombre, osmid in dict_osmid_refug_outdoor.items():
+        registros.append(
+            {
+                "name_custom": nombre,
+                "osm_id": int(osmid[1:]),
+                "osmid_str": osmid,
+                "tipo": "outdoor",
+            }
+        )
+    for nombre, osmid in dict_osmid_refug_indoor.items():
+        registros.append(
+            {
+                "name_custom": nombre,
+                "osm_id": int(osmid[1:]),
+                "osmid_str": osmid,
+                "tipo": "indoor",
+            }
+        )
 
-    # ------------------------------------------------------------------
-    # 2. Límite administrativo y red peatonal
-    # ------------------------------------------------------------------
-    print("\nStep 2/4: downloading Bilbao admin boundary and walking network...")
+    df_labels = pd.DataFrame(registros)
+    n_total_refug = len(df_labels)
+    print(f"  -> Total refugios (outdoor + indoor): {n_total_refug}")
 
-    # 2.1. Límite administrativo
+    if n_total_refug == 0:
+        print("No hay refugios definidos. Fin.")
+        return
+
+    # --------------------------------------------------------------
+    # 2. Descargar refugios y red peatonal
+    # --------------------------------------------------------------
+    print("\nPaso 2/5: descargando geometrías de refugios desde OSM...")
+
     try:
-        gdf_bilbao = ox.geocode_to_gdf(place_name)
+        gdf_refug = ox.geocode_to_gdf(df_labels["osmid_str"].tolist(), by_osmid=True)
     except Exception as e:
-        print("\n*** ERROR getting Bilbao boundary ***")
+        print("\n*** ERROR al consultar OSM para los refugios ***")
         print(e)
         return
 
-    try:
-        gdf_bilbao_proj = gdf_bilbao.to_crs(target_crs)
-        print("  -> Bilbao boundary projected to", target_crs)
-    except Exception as e:
-        print("  !! ERROR projecting Bilbao boundary:", e)
-        gdf_bilbao_proj = gdf_bilbao
+    # Asegurar columna osm_id
+    if "osm_id" not in gdf_refug.columns:
+        if "osmid" in gdf_refug.columns:
+            gdf_refug = gdf_refug.rename(columns={"osmid": "osm_id"})
+        else:
+            print("No encuentro columna osm_id/osmid en gdf_refug. Columnas:")
+            print(list(gdf_refug.columns))
+            return
 
-    # 2.2. Red peatonal
+    gdf_refug = gdf_refug.merge(df_labels[["osm_id", "tipo"]], on="osm_id", how="right")
+    gdf_refug = gdf_refug[~gdf_refug.geometry.isna()].copy()
+
+    if gdf_refug.empty:
+        print("No queda ninguna geometría válida de refugios. Fin.")
+        return
+
+    print("  -> Refugios descargados y cruzados con tipo.")
+
+    print("\n  Descargando red peatonal de Bilbao (network_type='walk')...")
     try:
         G_walk = ox.graph_from_place(place_name, network_type="walk", simplify=True)
     except Exception as e:
-        print("\n*** ERROR getting walking network ***")
+        print("\n*** ERROR al obtener la red peatonal ***")
         print(e)
         return
 
-    _, gdf_edges = ox.graph_to_gdfs(G_walk, nodes=True, edges=True)
+    # --------------------------------------------------------------
+    # 3. Nodos cercanos a refugios y edificios
+    # --------------------------------------------------------------
+    print("\nPaso 3/5: pegando refugios y edificios a la red peatonal...")
+
+    # Coordenadas de refugios (usamos centroides por si son polígonos)
+    refug_centroids = gdf_refug.geometry.centroid
+    refug_x = refug_centroids.x.values  # longitudes
+    refug_y = refug_centroids.y.values  # latitudes
+
+    # Nodos de red más cercanos a cada refugio
+    refug_nodes_all = ox.distance.nearest_nodes(G_walk, X=list(refug_x), Y=list(refug_y))
+    # Aseguramos que es una serie alineada con gdf_refug
+    gdf_refug["nearest_node"] = list(refug_nodes_all)
+
+    # Fuentes por tipo
+    nodes_outdoor = gdf_refug[gdf_refug["tipo"] == "outdoor"]["nearest_node"].unique().tolist()
+    nodes_indoor = gdf_refug[gdf_refug["tipo"] == "indoor"]["nearest_node"].unique().tolist()
+
+    print(f"  -> Nodos fuente OUTDOOR: {len(nodes_outdoor)}")
+    print(f"  -> Nodos fuente INDOOR : {len(nodes_indoor)}")
+
+    # Descargar edificios
+    print("\n  Descargando edificios residenciales de Bilbao...")
     try:
-        gdf_edges_proj = gdf_edges.to_crs(target_crs)
-        print("  -> Walking network projected to", target_crs)
+        gdf_buildings = ox.features_from_place(place_name, tags=building_tags)
     except Exception as e:
-        print("  !! ERROR projecting walking network:", e)
-        gdf_edges_proj = gdf_edges
+        print("\n*** ERROR al descargar edificios ***")
+        print(e)
+        return
 
-    # ------------------------------------------------------------------
-    # 3. Ajustar CRS de buffers al CRS objetivo (por si acaso)
-    # ------------------------------------------------------------------
-    print("\nStep 3/4: making sure all layers share the same CRS...")
+    gdf_buildings = gdf_buildings[~gdf_buildings.geometry.isna()].copy()
+    if gdf_buildings.empty:
+        print("No se han obtenido edificios con esos tags. Fin.")
+        return
 
-    if buffer_outdoor is not None and buffer_outdoor.crs != target_crs:
-        buffer_outdoor = buffer_outdoor.to_crs(target_crs)
+    total_buildings = len(gdf_buildings)
+    print(f"  -> Total edificios seleccionados: {total_buildings}")
 
-    if buffer_indoor is not None and buffer_indoor.crs != target_crs:
-        buffer_indoor = buffer_indoor.to_crs(target_crs)
+    # Centroide de cada edificio
+    gdf_buildings["centroid"] = gdf_buildings.geometry.centroid
+    bcent = gdf_buildings["centroid"]
+    bx = bcent.x.values
+    by = bcent.y.values
 
-    # ------------------------------------------------------------------
-    # 4. Dibujar y exportar a PDF
-    # ------------------------------------------------------------------
-    print("\nStep 4/4: plotting and saving to PDF...")
+    # Nodos más cercanos a cada edificio
+    building_nodes = ox.distance.nearest_nodes(G_walk, X=list(bx), Y=list(by))
+    gdf_buildings["nearest_node"] = list(building_nodes)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    # --------------------------------------------------------------
+    # 4. Dijkstra multi-fuente a 300 m por la red
+    # --------------------------------------------------------------
+    print("\nPaso 4/5: calculando distancias mínimas por la red (Dijkstra)...")
 
-    # Fondo blanco
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-
-    # 4.1. Límite de Bilbao
-    gdf_bilbao_proj.boundary.plot(
-        ax=ax, linewidth=1.5, edgecolor="black", zorder=1
-    )
-
-    # 4.2. Red peatonal
-    gdf_edges_proj.plot(
-        ax=ax, linewidth=0.3, alpha=0.4, color="gray", zorder=2
-    )
-
-    handles = []
-    labels = []
-
-    # 4.3. Buffer OUTDOOR
-    if buffer_outdoor is not None:
-        buffer_outdoor.plot(
-            ax=ax,
-            alpha=0.35,
-            edgecolor="#b30000",
-            facecolor="#ff4d4d",
-            linewidth=1,
-            zorder=3,
+    # OUTDOOR
+    if nodes_outdoor:
+        print(f"  -> Dijkstra multi-fuente OUTDOOR (cutoff = {cutoff_m} m)...")
+        dist_outdoor = nx.multi_source_dijkstra_path_length(
+            G_walk,
+            sources=nodes_outdoor,
+            cutoff=cutoff_m,
+            weight="length",
         )
-        handles.append(
-            plt.Line2D(
-                [0], [0],
-                marker="s", linestyle="",
-                markersize=10,
-                markerfacecolor="#ff4d4d",
-                markeredgecolor="#b30000",
-            )
+    else:
+        print("  -> No hay refugios OUTDOOR.")
+        dist_outdoor = {}
+
+    # INDOOR
+    if nodes_indoor:
+        print(f"  -> Dijkstra multi-fuente INDOOR (cutoff = {cutoff_m} m)...")
+        dist_indoor = nx.multi_source_dijkstra_path_length(
+            G_walk,
+            sources=nodes_indoor,
+            cutoff=cutoff_m,
+            weight="length",
         )
-        labels.append("300 m buffer (OUTDOOR)")
+    else:
+        print("  -> No hay refugios INDOOR.")
+        dist_indoor = {}
 
-    # 4.4. Buffer INDOOR
-    if buffer_indoor is not None:
-        buffer_indoor.plot(
-            ax=ax,
-            alpha=0.35,
-            edgecolor="#0033cc",
-            facecolor="#4d79ff",
-            linewidth=1,
-            zorder=4,
+    # COMBINADO (OUT ∪ IN)
+    nodes_all = nodes_outdoor + nodes_indoor
+    if nodes_all:
+        print(f"  -> Dijkstra multi-fuente COMBINADO (cutoff = {cutoff_m} m)...")
+        dist_combined = nx.multi_source_dijkstra_path_length(
+            G_walk,
+            sources=nodes_all,
+            cutoff=cutoff_m,
+            weight="length",
         )
-        handles.append(
-            plt.Line2D(
-                [0], [0],
-                marker="s", linestyle="",
-                markersize=10,
-                markerfacecolor="#4d79ff",
-                markeredgecolor="#0033cc",
-            )
-        )
-        labels.append("300 m buffer (INDOOR)")
+    else:
+        print("  -> No hay refugios en absoluto (ni outdoor ni indoor). Fin.")
+        return
 
-    # 4.5. Añadir red y límite a la leyenda
-    line_walk = plt.Line2D([0], [0], color="gray", linewidth=1)
-    line_limit = plt.Line2D([0], [0], color="black", linewidth=1.5)
+    # --------------------------------------------------------------
+    # 5. Clasificar edificios según cobertura en red
+    # --------------------------------------------------------------
+    print("\nPaso 5/5: clasificando edificios según cobertura en red...")
 
-    handles.extend([line_walk, line_limit])
-    labels.extend(["Pedestrian network", "Bilbao administrative boundary"])
+    # Para cada edificio miramos si su nodo está en los diccionarios dist_*
+    node_series = gdf_buildings["nearest_node"]
 
-    # Limites del mapa = bounding box del límite de Bilbao con márgenes
-    minx, miny, maxx, maxy = gdf_bilbao_proj.total_bounds
-    dx = maxx - minx
-    dy = maxy - miny
-    margin_x = dx * 0.05
-    margin_y = dy * 0.05
-    ax.set_xlim(minx - margin_x, maxx + margin_x)
-    ax.set_ylim(miny - margin_y, maxy + margin_y)
+    mask_outdoor = node_series.map(lambda n: n in dist_outdoor)
+    mask_indoor = node_series.map(lambda n: n in dist_indoor)
+    mask_combined = node_series.map(lambda n: n in dist_combined)
 
-    ax.set_aspect("equal")
-    ax.set_axis_off()
+    n_outdoor = int(mask_outdoor.sum())
+    n_indoor = int(mask_indoor.sum())
+    n_combined = int(mask_combined.sum())
 
-    # Leyenda en inglés
-    ax.legend(
-        handles,
-        labels,
-        loc="lower left",
-        frameon=True,
-        framealpha=0.9,
-        facecolor="white",
-        edgecolor="black",
-        fontsize=8,
-    )
+    pct_outdoor = (n_outdoor / total_buildings) * 100 if total_buildings > 0 else 0
+    pct_indoor = (n_indoor / total_buildings) * 100 if total_buildings > 0 else 0
+    pct_combined = (n_combined / total_buildings) * 100 if total_buildings > 0 else 0
 
-    plt.tight_layout()
+    print("\n================= RESULTADOS (300 m por red) =================")
+    print(f"Total edificios (building-tags seleccionados): {total_buildings}")
+    print("")
+    print(f"Edificios con distancia en red ≤ {cutoff_m} m a algún refugio OUTDOOR: "
+          f"{n_outdoor} ({pct_outdoor:.2f} % del total)")
+    print(f"Edificios con distancia en red ≤ {cutoff_m} m a algún refugio INDOOR : "
+          f"{n_indoor} ({pct_indoor:.2f} % del total)")
+    print(f"Edificios con distancia en red ≤ {cutoff_m} m a algún refugio (OUT ∪ IN): "
+          f"{n_combined} ({pct_combined:.2f} % del total)")
+    print("==============================================================\n")
 
-    pdf_file = "bilbao_buffers_outdoor_indoor.pdf"
-    plt.savefig(pdf_file, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-
-    print(f"\nDone. PDF saved as: {pdf_file}\n")
+    # Si quieres guardar los edificios etiquetados para GIS:
+    # gdf_buildings["in_outdoor_net"] = mask_outdoor
+    # gdf_buildings["in_indoor_net"] = mask_indoor
+    # gdf_buildings["in_combined_net"] = mask_combined
+    # gdf_buildings.to_file("edificios_cobertura_red.gpkg", layer="edificios", driver="GPKG")
 
 
 if __name__ == "__main__":
