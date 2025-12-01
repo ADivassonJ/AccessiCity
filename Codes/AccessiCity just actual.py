@@ -89,17 +89,6 @@ building = {"building": ["apartments", "barracks", "bungalow", "cabin", "detache
     "farm", "house", "houseboat", "residential", "semidetached_house", "static_caravan",
     "stilt_house", "terrace", "trullo", "yes"]}
 
-poss_ref = {"building": ["public","train_station"],
-            "amenity": [
-                "public", "townhall", "sport_centre", "information", 
-                "mall", "library", "museum", "community_centre", "arts_centre", 
-                "place_of_worship", "exhibition_centre", "school", "courthouse",
-                "theatre", "police"],
-            "leisure": ["sport_centre", "stadium"],
-            "tourism": ["museum", "hostel", "alpine_hut"],
-            "shop": "mall",
-            "railway":	"subway_entrance"}
-
 def get_osm_elements(area_name, poss_ref):
     """
     Obtiene y filtra los elementos de OSM según un conjunto fijo de etiquetas y prioridades,
@@ -353,7 +342,7 @@ def obtener_edificios_mas_cercanos(df1, df2, G, output_path):
 
 def read_doc(doc_name, doc_type, area, distritos, data=None):
     if doc_type == '.csv':
-        if doc_name == 'df_viviendas' or doc_name == 'df_ref_opt':
+        if doc_name == 'df_viviendas':
             type = 1
         else:
             type = 0
@@ -748,9 +737,9 @@ if __name__ == "__main__":
     if not os.path.exists(results_path):
         os.makedirs(results_path)
         
-    docs_to_read = [['df_viviendas','.csv', [ciudad, building]], ['df_ref_int', '.csv', list(horarios.keys())], ['df_ref_opt', '.csv', [ciudad, poss_ref]], ['walk', '.graphml', None]]
+    docs_to_read = [['df_viviendas','.csv', [ciudad, building]], ['df_ref_int', '.csv', list(horarios.keys())], ['walk', '.graphml', None]]
     docs = [read_doc(name, ext, ciudad, distritos, data) for name, ext, data in docs_to_read]
-    df_viviendas, df_ref_int, df_ref_opt, G = docs
+    df_viviendas, df_ref_int, G = docs
     
     if not os.path.exists(f'{str(data_path)}/Buildings Distances'):
             os.makedirs(f'{str(data_path)}/Buildings Distances')
@@ -765,13 +754,6 @@ if __name__ == "__main__":
         
         if not os.path.exists(input_path_existing):
             obtener_edificios_mas_cercanos(building_residential, df_ref_int, G, input_path_existing)
-        
-        # Nombre del archivo "feasible"
-        file_name_feasible = f"{building_residential.name}_feasible.csv"
-        input_path_feasible = f'{str(data_path)}/Buildings Distances/{file_name_feasible}'
-        
-        if not os.path.exists(input_path_feasible):
-            obtener_edificios_mas_cercanos(building_residential, df_ref_opt, G, input_path_feasible)
 
     distances_path = f'{str(data_path)}/Buildings Distances'
     
