@@ -400,12 +400,24 @@ def esta_abierto(nombre_edificio, fecha_y_hora):
         
         if inicio <= fecha_actual <= fin and dia_semana in periodo:
             for franja in periodo[dia_semana]:
-                horario_apertura, horario_cierre = [datetime.strptime(h, '%H:%M').time() for h in franja]
-                if horario_apertura <= hora_actual <= horario_cierre:
-                    return True
+                apertura_str, cierre_str = franja
+                horario_apertura = datetime.strptime(apertura_str, '%H:%M').time()
+                horario_cierre   = datetime.strptime(cierre_str, '%H:%M').time()
+                # Tramo “normal”: no cruza medianoche
+                if horario_apertura <= horario_cierre:
+                    if horario_apertura <= hora_actual <= horario_cierre:
+                        return True
+                else:
+                    # Tramo que cruza medianoche, ej. 20:00–04:00
+                    # Se considera abierto si:
+                    # - es después de la hora de apertura (misma tarde/noche), o
+                    # - es antes de la hora de cierre (madrugada del día siguiente)
+                    if hora_actual >= horario_apertura or hora_actual <= horario_cierre:
+                        return True
+
     return False
 
-def filtrar_por_distancia(df, limite=300):
+def filtrar_por_distancia(df, limite=500):
     # Filtrar el DataFrame según el criterio de la columna 'distance'
     df_filtrado = df[df['distance'] <= limite]
     return df_filtrado
@@ -636,7 +648,7 @@ def process_and_save_dataframes(df_optimization, results_path):
         df['rank'] = df.groupby(['hour_of_day','subarea', doc_name]).cumcount() + 1
         
         df = df.merge(
-            df_ref_opt[['osm_id', 'building_type_name']],  # Seleccionamos columnas necesarias
+            df_ref_int[['osm_id']],  # Seleccionamos columnas necesarias
             left_on='osmid',  # Columna del DataFrame original
             right_on='osm_id',  # Columna del DataFrame de referencia
             how='left'  # Realizamos un left join para mantener todas las filas de df
@@ -726,7 +738,7 @@ def process_and_save_dataframes(df_optimization, results_path):
 if __name__ == "__main__":
     ciudad = "Bilbao"
     year = 2024
-    max_distance = 300
+    
     
     distritos = ["Deusto", "Uribarri", "Otxarkoaga-Txurdinaga", "Begona", "Ibaiondo", "Abando", "Errekalde", "Basurtu-Zorrotza"]
     main_path = Path(__file__).resolve().parent.parent   
@@ -744,9 +756,6 @@ if __name__ == "__main__":
     if not os.path.exists(f'{str(data_path)}/Buildings Distances'):
             os.makedirs(f'{str(data_path)}/Buildings Distances')
     
-    
-    
-    
     for building_residential in tqdm(df_viviendas.itertuples(index=False), desc='Reading buildings docs: ', total=len(df_viviendas)):
         # Nombre del archivo "existing"
         file_name_existing = f"{building_residential.name}_existing.csv"
@@ -760,8 +769,24 @@ if __name__ == "__main__":
     buildings = listar_buildings_por_numero(distances_path)
 
     # Definir la primera y última fecha del año
+
+    max_distance = 300
+
+    '''#W13
     start_date = datetime(year, 3, 25, 0, 0)
-    end_date = datetime(year, 3, 31, 23, 0)
+    end_date = datetime(year, 3, 31, 23, 0)'''
+    
+
+    '''#W27
+    start_date = datetime(year, 7, 1, 0, 0)
+    end_date = datetime(year, 7, 7, 23, 0)'''
+
+
+    #W33
+    start_date = datetime(year, 8, 12, 0, 0)
+    end_date = datetime(year, 8, 18, 23, 0)
+
+
     hour_list = [start_date + timedelta(hours=i) for i in range(int((end_date - start_date).total_seconds() / 3600) + 1)]
     
     shelters_hour(df_ref_int, hour_list, results_path)
@@ -773,7 +798,7 @@ if __name__ == "__main__":
     point_list_filtered = point_list[point_list['type'] != 'existing'].reset_index(drop=True)
     point_list_filtered.to_csv(f'{results_path}/point_list_filtered.csv')
     
-    df_optimization = optimization(hour_list, point_list_filtered)
+    df_optimization = optimization(hour_list, point_list)
     
     process_and_save_dataframes(df_optimization, results_path)
     

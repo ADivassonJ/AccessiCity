@@ -63,7 +63,7 @@ dict_osmid_refug = {
     'Estacion del Funicular (abajo)': 'W123440604',
     'Bilbao Intermodal': 'W632988668',
     'Estacion de Abando Indalecio Prieto': 'W28776478',
-    'Estacion Tren Hospital Basurto': 'W402170994',
+    'Estacion Tren Hospital Basurto': 'N5301954699',
     'Estacion Tren Amezola': 'W111740255',
     'Bilbao La Concordia': 'W44113519',
     'Estacion Tren Autonomia': 'N5056379164',
